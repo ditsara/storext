@@ -21,6 +21,24 @@ module Storext
       end
     end
 
+    def storext_define_nested_reader(attr, type)
+      define_method attr do
+        attributes = send "#{attr}_attributes"
+        attributes = JSON.parse(attributes) if attributes.is_a?(String)
+        type_instance = type.new
+        attributes.each { |a, v| type_instance.send "#{a}=", v }
+        type_instance
+      end
+    end
+
+    def storext_define_nested_writer(attr, type)
+      define_method "#{attr}=" do |val|
+        type_instance = type.new
+        val.as_json.each { |a, v| type_instance.send "#{a}=", v }
+        send "#{attr}_attributes=", val.as_json
+      end
+    end
+
     def storext_define_predicater(column, attr)
       define_method "#{attr}?" do
         return false unless send(column) && send(column).has_key?(attr.to_s)
@@ -33,10 +51,22 @@ module Storext
     end
 
     def store_attribute(column, attr, type=nil, opts={})
+      return store_nested_attribute(column, attr, type, opts) if opts[:nested]
+      store_plain_attribute(column, attr, type, opts)
+    end
+
+    def store_plain_attribute(column, attr, type=nil, opts={})
       track_store_attribute(column, attr, type, opts)
       storext_check_attr_validity(attr, type, opts)
       storext_define_accessor(column, attr)
       store_accessor(column, attr)
+    end
+
+    def store_nested_attribute(column, attr, type, opts={})
+      attr_name = "#{attr}_attributes".to_sym
+      store_plain_attribute column, attr_name, Hash, opts
+      storext_define_nested_reader attr, type
+      storext_define_nested_writer attr, type
     end
 
     def storext_define_accessor(column, attr)

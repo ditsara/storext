@@ -178,6 +178,12 @@ describe Storext do
       phone = SmartPhone.create(number: "09999")
       expect(phone.reload.number).to eq "09999"
     end
+
+    it "retains nested objects" do
+      phone = SmartPhone.create(os: { type: "Android", version: "9", build: 'PQ1A.181205.002' })
+      binding.pry
+      expect(phone.reload.os).to be_a(SmartPhone::OS)
+    end
   end
 
   context "when no attributes defined" do
